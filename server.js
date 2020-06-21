@@ -22,12 +22,13 @@ const methodOverride = require('method-override');
 app.use(methodOverride('_method'));
 
 app.get('/', homeRoute);
-app.get('/search', searchLoop);
+// app.get('/search', searchLoop);
+app.get('/search', recomendationEngine);
 app.all('*', errorRoute);
 
 function homeRoute(req, res) {
-    console.log('Am I on?');
-    res.status(200).render('index.ejs');
+  console.log('Am I on?');
+  res.status(200).render('index.ejs');
 }
 
 // Get movies
@@ -35,16 +36,67 @@ function homeRoute(req, res) {
 // put those movies into a constructor function
 // ping openmovies to get posters
 
-function searchLoop(req, res) {
-    let searchedItem = req.body;
+// ---------- WIP ----------------
+// This might not work since there is a limit on how many API calls that can be made.
+////////////////////////////////////
+// function searchLoop(req, res) {
+//   let searchedItem = 'the+fifth+element';
 
-    let url = `https://tastedive.com/api/similar?$q=${searchedItem}&type=movies&k=${TD_API_KEY}&info=1`;
+//   let apiKey = process.env.TD_API_KEY;
 
-    superagent.get(url)
-        .then(results => {
-            console.log(results);
-        })
+//   let url = `https://tastedive.com/api/similar?q=movie:${searchedItem}&type=movies&key=${apiKey}`;
 
+// //   let url = `https://tastedive.com/api/similar?q=movie:${searchedItem}&type=movies`;
+
+
+//   superagent.get(url)
+//     .then(results => {
+//     //   console.log(results);
+//       let outputPlay = results.text;
+//     //   console.log(outputPlay);
+//       let parsedJSON = JSON.parse(outputPlay);
+//       console.log(parsedJSON);
+//     }).catch(errorCatch);
+// }
+
+// -------------- WIP ------------------
+// todo it this way we need to get the movie ID then pass it into the search query.
+function recomendationEngine(req, res){
+    let searchString = 'hobbit';
+
+    let url = 'https://api.themoviedb.org/3/search/movie';
+
+    // Define the query params
+    const queryParams = {
+      api_key: process.env.MOVIE_API_KEY,
+      query: searchString,
+      limit: 20
+    }
+
+    superagent(url)
+    // using the defined params
+    .query(queryParams)
+    .then(data => {
+        // console.log(data.body.results[0].id);
+        let movieId = data.body.results[0].id;
+
+        let idURL = `https://api.themoviedb.org/3/movie/${movieId}/recommendations`;
+
+        let idParams = {
+            api_key: process.env.MOVIE_API_KEY,
+            page: 2 
+        }
+
+        superagent(idURL)
+            .query(idParams)
+            .then(similarData => {
+                console.log('Did I make it?', similarData.body.results);
+            }).catch(errorCatch);
+    }).catch(errorCatch);
+}
+
+function errorCatch(err){
+  console.error(err);
 }
 
 //when a user clicks the movie's title gets sent to tasteDive and a new set of images get sent.
