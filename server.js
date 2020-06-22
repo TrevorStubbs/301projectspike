@@ -23,7 +23,7 @@ app.use(methodOverride('_method'));
 
 app.get('/', homeRoute);
 // app.get('/search', searchLoop);
-app.get('/search', recomendationEngine);
+app.get('/search', recommendationEngine);
 app.all('*', errorRoute);
 
 function homeRoute(req, res) {
@@ -61,42 +61,105 @@ function homeRoute(req, res) {
 
 // -------------- WIP ------------------
 // todo it this way we need to get the movie ID then pass it into the search query.
-function recomendationEngine(req, res){
-    let searchString = 'hobbit';
+function recommendationEngine(req, res){
+  let searchString = 'hobbit';
 
-    let url = 'https://api.themoviedb.org/3/search/movie';
+  let url = 'https://api.themoviedb.org/3/search/movie';
 
-    // Define the query params
-    const queryParams = {
-      api_key: process.env.MOVIE_API_KEY,
-      query: searchString,
-      limit: 20
-    }
+  // Define the query params
+  const queryParams = {
+    api_key: process.env.MOVIE_API_KEY,
+    query: searchString,
+    limit: 20
+  }
 
-    superagent(url)
-    // using the defined params
+  superagent(url)
+  // using the defined params
     .query(queryParams)
     .then(data => {
-        // console.log(data.body.results[0].id);
-        let movieId = data.body.results[0].id;
+      // console.log(data.body.results[0]);
+      let movieId = data.body.results[0].id;
+      let movieGenres = data.body.results[0].genre_ids;
+      let movieVotes = data.body.results[0].vote_average;
 
-        let idURL = `https://api.themoviedb.org/3/movie/${movieId}/recommendations`;
+      let idURL = `https://api.themoviedb.org/3/movie/${movieId}/recommendations`;
 
-        let idParams = {
+      let idParams = {
+        api_key: process.env.MOVIE_API_KEY,
+        page: 2
+      }
+
+      superagent(idURL)
+        .query(idParams)
+        .then(similarData => {
+          let similarArray = [];
+          for(let i = 0; i < similarData.body.results.length; i++){
+            similarArray.push(new Movie(similarData.body.results[i]));
+            if(i >= 2){
+              break;
+            }
+          }
+
+          // console.log(similarArray);
+
+          let genreIdURL= 'https://api.themoviedb.org/3/discover/movie?';
+
+          let genreParams = {
             api_key: process.env.MOVIE_API_KEY,
-            page: 2 
-        }
+            with_genres: movieGenres
+          }
 
-        superagent(idURL)
-            .query(idParams)
-            .then(similarData => {
-                console.log('Did I make it?', similarData.body.results);
-            }).catch(errorCatch);
+          superagent(genreIdURL)
+            .query(genreParams)
+            .then(genreResults => {
+              let genreArray = []
+              for (let i = 0; i < genreResults.body.results.length; i++){
+                genreArray.push(new Movie(genreResults.body.results[i]));
+                if(i >= 2){
+                  break;
+                }
+              }
+
+              let votesParams = {
+                api_key: process.env.MOVIE_API_KEY,
+                vote_average: movieVotes
+              }
+
+              superagent(genreIdURL)
+                .query(votesParams)
+                .then((votesResults => {
+                  // console.log(votesResults.body.results);
+                  let votesArray = [];
+                  for(let i = 0; i < votesResults.body.results.length; i++){
+                    votesArray.push(new Movie(votesResults.body.results[i]));
+                    if(i >= 2){
+                      break;
+                    }
+                  }
+
+                  let finalOutputArray = [similarArray, genreArray, votesArray];
+
+                  console.log('final output array:', finalOutputArray);
+
+                  res.status(200).render('index.ejs', { frontView: finalOutputArray });
+                })).catch(errorCatch);
+
+            }).catch(errorCatch)
+        }).catch(errorCatch)
+
+
     }).catch(errorCatch);
 }
 
 function errorCatch(err){
   console.error(err);
+}
+
+function Movie(obj){
+  this.title = obj.title;
+  this.genre = obj.genre_ids;
+  this.overview = obj.overview;
+  this.poster = obj.poster_path;
 }
 
 //when a user clicks the movie's title gets sent to tasteDive and a new set of images get sent.
@@ -111,10 +174,10 @@ function errorCatch(err){
 // probably needs a random number helper functions (int).
 
 function errorRoute(req, res){
-    console.log('I am not here');
-    res.status(200).render('error.ejs');
+  console.log('I am not here');
+  res.status(200).render('error.ejs');
 }
 
 app.listen(PORT, () => {
-    console.log(`Listening on ${PORT}`);
+  console.log(`Listening on ${PORT}`);
 })
