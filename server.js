@@ -62,7 +62,7 @@ function homeRoute(req, res) {
 // -------------- WIP ------------------
 // todo it this way we need to get the movie ID then pass it into the search query.
 function recommendationEngine(req, res){
-  let searchString = 'hobbit';
+  let searchString = 'the fifth element';
 
   let url = 'https://api.themoviedb.org/3/search/movie';
 
@@ -70,7 +70,7 @@ function recommendationEngine(req, res){
   const queryParams = {
     api_key: process.env.MOVIE_API_KEY,
     query: searchString,
-    limit: 20
+    limit: 1
   }
 
   superagent(url)
@@ -86,7 +86,7 @@ function recommendationEngine(req, res){
 
       let idParams = {
         api_key: process.env.MOVIE_API_KEY,
-        page: 2
+        page: 1
       }
 
       superagent(idURL)
@@ -141,13 +141,10 @@ function recommendationEngine(req, res){
 
                   console.log('final output array:', finalOutputArray);
 
-                  res.status(200).render('index.ejs', { frontView: finalOutputArray });
+                  res.status(200).render('data.ejs', { frontView: finalOutputArray });
                 })).catch(errorCatch);
-
             }).catch(errorCatch)
         }).catch(errorCatch)
-
-
     }).catch(errorCatch);
 }
 
